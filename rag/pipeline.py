@@ -77,6 +77,11 @@ def ingest(collection_key: str) -> None:
         filename_as_id=True,
     ).load_data()
 
+    for doc in documents:
+        abs_path = doc.metadata.get("file_path", "")
+        if abs_path:
+            doc.metadata["relative_path"] = str(Path(abs_path).relative_to(corpus_path))
+
     splitter = SentenceSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
     nodes = splitter.get_nodes_from_documents(documents)
     print(f"Split into {len(nodes)} chunk(s)")
@@ -121,7 +126,7 @@ def query(collection_key: str, question: str, top_k: int = 5) -> list[dict]:
     return [
         {
             "score": round(node.score, 4) if node.score else None,
-            "source": node.metadata.get("file_name", "unknown"),
+            "source": node.metadata.get("relative_path") or node.metadata.get("file_name", "unknown"),
             "text": node.text.strip(),
         }
         for node in results
