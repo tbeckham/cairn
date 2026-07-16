@@ -35,9 +35,7 @@ def ingest_folder(source: Source) -> int:
     ensure_collections(client)
 
     documents = SimpleDirectoryReader(
-        input_dir=str(corpus_path),
-        required_exts=list(extensions),
-        recursive=True,
+        input_files=[str(f) for f in supported_files],
         filename_as_id=True,
     ).load_data()
 
