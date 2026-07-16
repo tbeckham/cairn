@@ -5,7 +5,7 @@ from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreI
 from llama_index.core.node_parser import SentenceSplitter
 
 from config.settings import CHUNK_OVERLAP, CHUNK_SIZE
-from rag.sources.registry import Source
+from rag.sources.registry import Source, matches_extensions
 from rag.store import ensure_collections, get_client, get_vector_store
 
 DEFAULT_GIT_EXTENSIONS = {".md", ".txt", ".rst", ".py", ".sh", ".yaml", ".yml", ".toml", ".json"}
@@ -65,11 +65,11 @@ def ingest_git(source: Source, pull: bool = True) -> int:
     if pull:
         _git_pull(repo_path, source.name)
 
-    extensions = set(source.extensions) if source.extensions else DEFAULT_GIT_EXTENSIONS
+    patterns = set(source.extensions) if source.extensions else DEFAULT_GIT_EXTENSIONS
     supported_files = [
         f for f in repo_path.rglob("*")
         if f.is_file()
-        and f.suffix.lower() in extensions
+        and matches_extensions(f, patterns)
         and not any(part in EXCLUDED_DIRS for part in f.parts)
         and f.name not in EXCLUDED_FILES
     ]

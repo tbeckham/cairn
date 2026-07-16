@@ -13,6 +13,7 @@ A source definition has:
 """
 from __future__ import annotations
 
+import fnmatch
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -58,10 +59,51 @@ class Source:
                 raise ValueError(f"Source '{self.name}': type 'url' requires a 'url'")
 
         if self.extensions:
-            self.extensions = [
-                e if e.startswith(".") else f".{e}"
-                for e in self.extensions
-            ]
+            # Normalise entries but preserve wildcards and dotfile names as-is.
+            # Examples after normalisation:
+            #   "md"      -> ".md"       (plain extension, add dot)
+            #   ".py"     -> ".py"       (already dotted, keep)
+            #   ".zsh*"   -> ".zsh*"     (wildcard, keep)
+            #   ".zshrc"  -> ".zshrc"    (dotfile, keep)
+            #   "zsh*"    -> ".zsh*"     (wildcard without dot, add dot)
+            normalized = []
+            for e in self.extensions:
+                if not e.startswith("."):
+                    e = f".{e}"
+                normalized.append(e)
+            self.extensions = normalized
+
+
+def matches_extensions(path: Path, patterns: set[str]) -> bool:
+    """
+    Return True if a file path matches any of the extension patterns.
+
+    Patterns support:
+      - Exact suffixes:  ".py", ".md"
+      - Wildcards:       ".zsh*", ".env*"
+      - Dotfiles:        ".zshrc", ".gitignore" (matched by full filename)
+      - No extension:    files like .zshrc have suffix="" so we match by name
+
+    Examples:
+      matches_extensions(Path(".zshrc"),        {".zsh*"})   -> True
+      matches_extensions(Path("config.py"),     {".py"})     -> True
+      matches_extensions(Path("notes.md"),      {".md*"})    -> True
+      matches_extensions(Path(".gitignore"),    {".gitignore"}) -> True
+    """
+    suffix = path.suffix.lower()       # e.g. ".py" or "" for dotfiles
+    name   = path.name.lower()         # e.g. ".zshrc"
+
+    for pattern in patterns:
+        p = pattern.lower()
+        # Wildcard pattern — match against suffix first, then full name
+        if "*" in p or "?" in p:
+            if fnmatch.fnmatch(suffix, p) or fnmatch.fnmatch(name, p):
+                return True
+        else:
+            # Exact match: suffix for normal files, full name for dotfiles
+            if suffix == p or name == p:
+                return True
+    return False
 
 
 def _load_yaml(path: Path) -> list[dict]:
