@@ -1,0 +1,30 @@
+sources:
+  # Folder source — watches local corpus directories
+  - name: work-docs
+    type: folder
+    path: corpus/work
+    collection: work
+    watch: true
+
+  - name: personal-docs
+    type: folder
+    path: corpus/personal
+    collection: personal
+    watch: true
+
+  # Git repo source — pulls and re-ingests on schedule
+  # - name: my-repo
+  #   type: git
+  #   path: ~/Development/my-repo
+  #   collection: work
+  #   extensions: [.md, .py, .sh, .yaml]
+  #   schedule: "0 * * * *"
+
+  # URL source — fetches and optionally crawls on schedule
+  # - name: internal-wiki
+  #   type: url
+  #   url: https://wiki.example.com/engineering
+  #   collection: work
+  #   schedule: "0 2 * * *"
+  #   crawl: true
+  #   max_pages: 50
