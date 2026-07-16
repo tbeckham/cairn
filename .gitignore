@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+
+# uv
+.uv/
+
+# Corpus files (documents are local, not versioned)
+corpus/work/*
+corpus/personal/*
+
+# Keep the folders themselves
+!corpus/work/.gitkeep
+!corpus/personal/.gitkeep
+
+# OS
+.DS_Store
