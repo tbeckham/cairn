@@ -1,19 +1,45 @@
 #!/bin/bash
 
-# Trigger Podman machine startup if not already running
-/opt/homebrew/bin/podman machine start 2>/dev/null || true
+set -euo pipefail
 
-# Poll for socket readiness (timeout after 30 seconds)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PODMAN="${PODMAN_BIN:-$(command -v podman)}"
+CONTAINER=qdrant
+IMAGE=docker.io/qdrant/qdrant:latest
+STORAGE="${CAIRN_QDRANT_STORAGE:-${SCRIPT_DIR}-qdrant-storage}"
+
+if [ -z "$PODMAN" ]; then
+    echo "Podman was not found in PATH. Set PODMAN_BIN to its location." >&2
+    exit 1
+fi
+
+"$PODMAN" machine start >/dev/null 2>&1 || true
+
 counter=0
-until /opt/homebrew/bin/podman system connection list >/dev/null 2>&1 || [ $counter -ge 30 ]; do
+until "$PODMAN" info >/dev/null 2>&1 || [ "$counter" -ge 30 ]; do
     sleep 2
     counter=$((counter + 2))
 done
 
-if [ $counter -ge 30 ]; then
-    echo "Timed out waiting for Podman machine socket." >&2
+if ! "$PODMAN" info >/dev/null 2>&1; then
+    echo "Timed out waiting for Podman machine." >&2
     exit 1
 fi
 
-# Start Qdrant container
-/opt/homebrew/bin/podman start qdrant
+mkdir -p "$STORAGE"
+
+if "$PODMAN" container exists "$CONTAINER"; then
+    if [ "$("$PODMAN" inspect --format '{{.State.Running}}' "$CONTAINER")" = "true" ]; then
+        echo "$CONTAINER is already running"
+    else
+        "$PODMAN" start "$CONTAINER"
+    fi
+else
+    "$PODMAN" run -d \
+        --name "$CONTAINER" \
+        --restart=unless-stopped \
+        -p 6333:6333 \
+        -p 6334:6334 \
+        -v "$STORAGE:/qdrant/storage:Z" \
+        "$IMAGE"
+fi
